@@ -1,21 +1,79 @@
 import express from 'express';
 import morgan from 'morgan';
 import fs from 'fs';
-import path from 'path'
-const app = express();
+import path from 'path';
+import { Server } from "socket.io";
+import http from 'http';
+import pty from 'node-pty';
+import os from 'os';
+
+import cors from 'cors';
 
 
 const WORKING_DIR = '/workspace';
+
+const app = express();
+const httpServer = http.createServer(app);
+
 app.use(morgan('dev'));
+app.use(cors({
+    methods: [ "GET", "POST", "PATCH", "DELETE" ],
+    origin: "*",
+}));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.get('/', (req, res) => {
-  res.status(200).json({message: 'Hello from Agent Service'
 
-  });
+const io = new Server(httpServer, {
+    cors: {
+        origin: "*",
+        methods: [ "GET", "POST", "PATCH" ],
+    }
+});
+
+
+app.get('/', (req, res) => {
+    res.status(200).json({
+        message: 'Hello from sandbox agent!',
+        status: 'success',
+    });
+});
+
+
+
+const shell = process.env.SHELL || 'bash';
+
+// Spawn the PTY process
+const ptyProcess = pty.spawn(shell, [], {
+    name: 'xterm-color',
+    cols: 80,
+    rows: 30,
+    cwd: "/workspace",
+    env: process.env
+});
+
+ptyProcess.onData((data) => {
+    io.emit('terminal-output', data);
+});
+
+ptyProcess.onExit(({ exitCode, signal }) => {
+    console.log(`PTY process exited with code: ${exitCode}, signal: ${signal}`);
+});
+
+io.on("connection", (socket) => {
+    console.log("Client connected: " + socket.id);
+
+    socket.on("terminal-input", (data) => {
+        ptyProcess.write(data);
+    });
+
+    socket.on("disconnect", () => {
+        console.log("Client disconnected: " + socket.id);
+    });
 })
 
- /* @route GET /list-files
+/**
+ * @route GET /list-files
  * @description Lists all files in the working directory and its subdirectories. Returns a JSON object with the file paths relative to the working directory. exclude directories like node_modules, .git,dist, etc.
  * - eg. {
  *     "files": [
@@ -25,8 +83,6 @@ app.get('/', (req, res) => {
  *     ]
  * }
  */
-
-
 app.get("/list-files", async (req, res) => {
 
     const listFiles = async (dir, baseDir) => {
@@ -63,10 +119,9 @@ app.get("/list-files", async (req, res) => {
             message: `Error listing files: ${err.message}`,
             status: 'error',
         });
-      }
+    }
 
-
-    })
+})
 
 
 /**
@@ -188,4 +243,4 @@ app.post("/create-files", async (req, res) => {
 })
 
 
-export default app;
+export default httpServer;
