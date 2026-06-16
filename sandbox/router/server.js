@@ -1,8 +1,8 @@
-import app from './src/app.js';
+import server from './src/app.js';
 
 const PORT = process.env.PORT || 3000;
 
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`Router service is running on port ${PORT}`);
 }   
 );
