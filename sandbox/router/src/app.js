@@ -26,6 +26,7 @@ function getProxy(sandboxId) {
       target,
       changeOrigin: true,
       ws: true,
+      pathRewrite: { [`^/preview/${sandboxId}`]: '' },
     });
   }
 
@@ -40,35 +41,30 @@ function getAgentProxy(sandboxId) {
       target,
       changeOrigin: true,
       ws: true,
+      pathRewrite: { [`^/agent/${sandboxId}`]: '' },
     });
   }
 
   return agentProxies[sandboxId];
 }
 
-app.use((req, res, next) => {
-  const host = req.headers.host;
-  const sandboxId = host.split(".")[0];
+app.use('/agent/:sandboxId', (req, res, next) => {
+  return getAgentProxy(req.params.sandboxId)(req, res, next);
+});
 
-  if (host.split(".")[1] === "agent") {
-    return getAgentProxy(sandboxId)(req, res, next);
-  } else if (host.split(".")[1] === "preview") {
-    return getProxy(sandboxId)(req, res, next);
-  }
+app.use('/preview/:sandboxId', (req, res, next) => {
+  return getProxy(req.params.sandboxId)(req, res, next);
 });
 
 // Create the HTTP server explicitly
 const server = http.createServer(app);
 
-// ✅ Handle WebSocket upgrades — this is what was missing
 server.on("upgrade", (req, socket, head) => {
-  const host = req.headers.host;
-  const sandboxId = host.split(".")[0];
-  const type = host.split(".")[1];
+  const parts = req.url.split('/');
+  const type = parts[1];
+  const sandboxId = parts[2];
 
-  console.log(
-    `WS upgrade request: ${host}, sandboxId: ${sandboxId}, type: ${type}`
-  );
+  console.log(`WS upgrade request: ${req.url}, type: ${type}, sandboxId: ${sandboxId}`);
 
   if (type === "agent") {
     const proxy = getAgentProxy(sandboxId);
@@ -81,4 +77,4 @@ server.on("upgrade", (req, socket, head) => {
   }
 });
 
-export default server; // export server, not app
+export default server;

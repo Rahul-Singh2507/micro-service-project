@@ -9,7 +9,6 @@ metadata:
     nginx.ingress.kubernetes.io/affinity: "cookie"
     nginx.ingress.kubernetes.io/session-cookie-name: "route"
     nginx.ingress.kubernetes.io/session-cookie-path: "/"
-    
   labels:
     app.kubernetes.io/name: codespace-ingress
 spec:
@@ -24,8 +23,6 @@ spec:
             name: sandbox-service
             port:
               number: 80
-  - http:
-      paths:
       - pathType: Prefix
         path: "/api/ai"
         backend:
@@ -33,23 +30,22 @@ spec:
             name: ai-service
             port:
               number: 80
-
-  - host: "*.preview.localhost"
-    http:
-      paths:
       - pathType: Prefix
-        path: "/"
+        path: "/api/auth"
+        backend:
+          service:
+            name: auth-service
+            port:
+              number: 80
+      - pathType: Prefix
+        path: "/agent"
         backend:
           service:
             name: router-service
             port:
               number: 80
-
-  - host: "*.agent.localhost"
-    http:
-      paths:
       - pathType: Prefix
-        path: "/"
+        path: "/preview"
         backend:
           service:
             name: router-service
