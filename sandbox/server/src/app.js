@@ -16,10 +16,9 @@ app.post("/api/sandbox/start",async (req,res)=>{
  const sandboxId = uuid()
 await Promise.all([createPod(sandboxId),createService(sandboxId)])
 res.status(201).json({
-    message: "Sandbox created successfully",
+    message:"Sandbox created successfully",
     sandboxId,
-   previewUrl: `http://localhost/preview/${sandboxId}`,
-   agentUrl: `http://localhost/agent/${sandboxId}`
+    previewUrl:`http://${sandboxId}.preview.localhost`
 })          
     
 })
